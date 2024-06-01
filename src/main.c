@@ -19,44 +19,19 @@ struct edges{
   Edge* next;
 };
 
-typedef struct ing In;
-typedef struct outg Out;
-
-typedef struct kno Knode;
-struct kno{
-  char* name;
-  int anzin;
-  int anzout;
-  In** incomming;
-  Out** outgoing;
-  Knode* next;
-};
-
-struct ing{
-  Knode* kn;
-  In* next;
-};
-
-struct outg{
-  Knode* kn;
-  Out* next;
-};
-
-/*
 typedef struct kante Kanten;
 struct kante{
   char* name;
   int anzin;
   int anzout;
-};*/
+};
 
 void simrand(unsigned int N, unsigned int p, Edge** liste);
 void simmark(unsigned int N, unsigned int p, Edge** liste);
 void stat(Edge** liste);
 int readgraph(char* filename, Edge** liste);
-Knode* erstelleknoten(char* nam);
-Knode* fugeknotenhinzu(Knode** kliste, char* nam);
-Knode** alsgraph(Edge** liste);
+void add(char* y, char* z, Edge** liste);
+Kanten** outingoingedges(Edge** liste, int anz);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -72,7 +47,7 @@ int main(int argc, char *const *argv) {
   while ((opt = getopt(argc, argv, "hr:m:sp"))!= -1){
     switch (opt) {
       case 'h':
-        printf("Available command line parameters:\n -h\t (Print an overview of the availible command line parameters)\n -r N\t (Simulate N steps of the random surfer and output the result)\n -m N\t (Simulate N steps of the Markov chain and output the result)\n -s\t (Compute and print the statistic of the graph)\n -p P\t (Set the parameter p to P percent, default: P = 10)\n");
+        printf("Available command line parameters:\n -h\t (Print an overview of the availible command line parameters)\n -r N\t (Simulate N steps of the random surfer and output the result)\n -m N\t (Simulate N steps of the Markov chain and output the result)\n -s\t (Compute and print the statistic of the graph)\n -p  P\t (Set the parameter p to P percent, default: P = 10)\n");
         break;
       case 'r':
         N = atoi(optarg);
@@ -141,7 +116,7 @@ int main(int argc, char *const *argv) {
     Edge* x7 = calloc(1, sizeof(Edge));
     x7->src = calloc(257,sizeof(char));
     x7->dst = calloc(257,sizeof(char));
-    strcpy(x7->src, "leaderboard");
+    strcpy(x7->src, "leaderborad");
     strcpy(x7->dst, "dCMS");
     Edge* x8 = calloc(1, sizeof(Edge));
     x8->src = calloc(257,sizeof(char));
@@ -181,95 +156,10 @@ int main(int argc, char *const *argv) {
     x10->next = x11;
     x11->next = x12;
     x12->next = NULL;
-  Knode* k;
-  Knode** klist = &k;
-  *klist = NULL;
-/*
-  char* nam = "dGit";
-  Knode* w = fugeknotenhinzu(klist, nam);
-  //printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d\n", w->name, w->anzin, w->anzout);
-  Edge* zz = *liste;
-  while (zz->next != NULL){
-    w = fugeknotenhinzu(klist, zz->src);
-    //printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d\n", w->name, w->anzin, w->anzout);
-    zz = zz->next;
+  Kanten** k = outingoingedges(liste, 24);
+  for (int i=0; i<24; i++){
+    printf("%s %d %d\n", (k[i]->name), (k[i]->anzin), (k[i]->anzout));
   }
-  w = fugeknotenhinzu(klist, zz->src);
-  zz = *liste;
-  while (zz->next != NULL){
-    w = fugeknotenhinzu(klist, zz->dst);
-    //printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d\n", w->name, w->anzin, w->anzout);
-    zz = zz->next;
-  }
-  w = fugeknotenhinzu(klist, zz->dst);
-  */
-  klist = alsgraph(liste);
-  Knode* w = *(klist);
-  Knode* kk;
-  while (w->next != NULL){
-      printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d\n", w->name, w->anzin, w->anzout);
-      if (*(w->incomming) != NULL){
-        printf("Incomming: ");
-        In* iii = *(w->incomming);
-        while (iii->next != NULL){
-          kk = iii->kn;
-          printf(" %s ", kk->name);
-          iii = iii->next;
-        }
-        kk = iii->kn;
-        printf(" %s\n", kk->name);
-      }
-    
-      if (*(w->outgoing) != NULL){
-        printf("Outgoing: ");
-        Out* ooo = *(w->outgoing);
-        while (ooo->next != NULL){
-          kk = ooo->kn;
-          printf(" %s ", kk->name);
-          ooo = ooo->next;
-        }
-        kk = ooo->kn;
-        printf(" %s\n", kk->name);
-      }
-      printf("\n");
-      w = w->next;
-  }
-  printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d\n", w->name, w->anzin, w->anzout);
-      if (*(w->incomming) != NULL){
-        printf("Incomming: ");
-        In* iii = *(w->incomming);
-        while (iii->next != NULL){
-          kk = iii->kn;
-          printf(" %s ", kk->name);
-          iii = iii->next;
-        }
-        kk = iii->kn;
-        printf(" %s\n", kk->name);
-      }
-    
-      if (*(w->outgoing) != NULL){
-        printf("Outgoing: ");
-        Out* ooo = *(w->outgoing);
-        while (ooo->next != NULL){
-          kk = ooo->kn;
-          printf(" %s ", kk->name);
-          ooo = ooo->next;
-        }
-        kk = ooo->kn;
-        printf(" %s\n", kk->name);
-      }
-      printf("\n");
-
-  /*
-  //Kanten** k = outingoingedges(liste, 24);
-  Knode* k;
-  Knode** klist = &k;
-  *klist = NULL;
-  erstellegraph(klist, liste);
-  Knode* w = *klist;
-  while(w->next != NULL){
-    printf("Name: %s, Anzahl eingehend: %d, Anzahl ausgehend: %d", w->name, w->anzin, w->anzout); 
-  }*/
 //
 
 
@@ -388,109 +278,73 @@ int readgraph(char* filename, Edge** liste){
   return (anz*2);
 }
 
-//Umwandlung in einen Graphen
-Knode* erstelleknoten(char* nam){
-  Knode* k = calloc(1,sizeof(Knode));
-  k->name = calloc(257,sizeof(char));
-  strcpy(k->name, nam);
-  k->anzin = 0;
-  k->anzout = 0;
-  k->incomming = calloc(1,sizeof(In*));
-  *(k->incomming) = NULL;
-  k->outgoing = calloc(1, sizeof(Out*));
-  *(k->outgoing) = NULL;
-  k->next = NULL;
-  return(k);
-}
 
-Knode* fugeknotenhinzu(Knode** kliste, char* nam){
-  Knode* z;
-  if (*kliste == NULL){
-    z = erstelleknoten(nam);
-    *kliste = z;
-    return(z);
+Kanten** outingoingedges(Edge** liste, int anz){
+  //Lege eine Liste mit allen Kanten an
+  Kanten** statistic = calloc(anz, sizeof(Kanten*));
+  //Alle Werte in statistic sind nun Kanten
+  for (int i=0; i<anz; i++){
+    Kanten* k = calloc(1, sizeof(Kanten));
+    k->name = calloc(256, sizeof(char));
+    k->anzin = 0;
+    k->anzout = 0;
+    statistic[i] = k;
   }
-  z = *kliste;
-  while(z->next != NULL){
-    if (!strcmp(z->name, nam)){
-      return(z);
+  //Iteriere über alle Edges und schaue, ob src und dst schon in unserer Liste sind, wenn nicht füge sie hinzu
+  Edge* z = *liste;
+  while (z->next != NULL){
+    for (int i=0; i<anz; i++){
+      if (statistic[i] == NULL || statistic[i]->name == NULL){
+        break;
+      }
+      if (! strcmp(statistic[i]->name, z->src)){
+        (statistic[i]->anzout) = (statistic[i]->anzout)+1;
+        break;
+      }
+      if ((statistic[i]->name)[0] == '\0'){
+        strcpy(statistic[i]->name, z->src);
+        (statistic[i]->anzout) = 1;
+        break;
+      }
+    }
+    for (int i=0; i<anz; i++){
+      if (! strcmp(statistic[i]->name, z->dst)){
+        (statistic[i]->anzin) = (statistic[i]->anzin)+1;
+        break;
+      }
+      if ((statistic[i]->name)[0] == '\0'){
+        strcpy(statistic[i]->name, z->src);
+        (statistic[i]->anzin) = 1;
+        break;
+      }
     }
     z = z->next;
   }
-  if (!strcmp(z->name, nam)){
-    return(z);
-  }
-  Knode* x = erstelleknoten(nam);
-  z->next = x;
-  return(x);
-}
-
-Knode** alsgraph(Edge** liste){
-  Knode* k;
-  Knode** klist = &k;
-  *klist = NULL;
-  Knode *w, *u;
-  Edge* zz = *liste;
-  while (zz->next != NULL){
-    w = fugeknotenhinzu(klist, zz->src);
-    u = fugeknotenhinzu(klist, zz->dst);
-    Out* ou = calloc(1, sizeof(Out));
-    ou->kn = u;
-    ou->next = NULL;
-    if (*(w->outgoing) == NULL){
-      *(w->outgoing) = ou;
-    }else{
-      Out* o = *(w->outgoing);
-      while(o->next != NULL){
-        o = o->next; 
+      printf("%s\n", z->dst);
+    for (int i=0; i<anz; i++){
+      if (statistic[i] == NULL || statistic[i]->name == NULL){
+        break;
       }
-      o->next = ou;
-    }
-    (w->anzout)++;
-
-    In* inn = calloc(1, sizeof(In));
-    inn->kn = w;
-    inn->next = NULL;
-    if (*(u->incomming) == NULL){
-      *(u->incomming) = inn;
-    }else{
-      In* o = *(u->incomming);
-      while(o->next != NULL){
-        o = o->next; 
+      if (! strcmp(statistic[i]->name, z->src)){
+        (statistic[i]->anzout) = (statistic[i]->anzout)+1;
+        break;
       }
-      o->next = inn;
+      if ((statistic[i]->name)[0] == '\0'){
+        strcpy(statistic[i]->name, z->src);
+        (statistic[i]->anzout) = 1;
+        break;
+      }
     }
-    (u->anzin)++;
-    zz = zz->next;
-  }
-  w = fugeknotenhinzu(klist, zz->src);
-  u = fugeknotenhinzu(klist, zz->dst);
-  Out* ou = calloc(1, sizeof(Out));
-  ou->kn = u;
-  ou->next = NULL;
-  if (*(w->outgoing) == NULL){
-    *(w->outgoing) = ou;
-  }else{
-    Out* o = *(w->outgoing);
-    while(o->next != NULL){
-      o = o->next; 
+    for (int i=0; i<anz; i++){
+      if (! strcmp(statistic[i]->name, z->dst)){
+        (statistic[i]->anzin) = (statistic[i]->anzin)+1;
+        break;
+      }
+      if ((statistic[i]->name)[0] == '\0'){
+        strcpy(statistic[i]->name, z->src);
+        (statistic[i]->anzin) = 1;
+        break;
+      }
     }
-    o->next = ou;
-  }
-  (w->anzout)++;
-
-  In* inn = calloc(1, sizeof(In));
-  inn->kn = w;
-  inn->next = NULL;
-  if (*(u->incomming) == NULL){
-    *(u->incomming) = inn;
-  }else{
-    In* o = *(u->incomming);
-    while(o->next != NULL){
-      o = o->next; 
-    }
-    o->next = inn;
-  }
-  (u->anzin)++;
-  return(klist);
+  return(statistic);
 }
