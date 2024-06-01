@@ -26,6 +26,7 @@ struct knod{
   Knode* next;
   Way* wege;
   int anzout;
+  int anzin;
 };
 
 typedef struct ver Way;
@@ -39,7 +40,7 @@ struct ver{
 
 void simrand(unsigned int N, unsigned int p, char *filename);
 void simmark(unsigned int N, unsigned int p, char *filename);
-void stat(char *filename);
+void stat(Knode** klist, int anzv, int anze, char* g_name);
 char* readgraph(char* filename, Edge** liste);
 void freeedges (Edge** liste);
 void printedges(Edge** liste);
@@ -48,6 +49,11 @@ void edgestograph(Knode** klist, Edge** liste, int* e);
 void printknodes(Knode** klist, int anzv);
 Knode* fuegeknotenhinzu(Knode** kliste, char* nam);
 void verbindungen(Knode** klist, Edge** liste, int anzv);
+void freeknodes(Knode** klist);
+void anzahlderausgänge(Knode** klist, int anzv);
+void anzahldereingänge(Knode** klist, int anzv);
+int min(int a, int b);
+int max(int a, int b);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -108,43 +114,44 @@ int main(int argc, char *const *argv) {
     return(1);
   }
 
-  Edge* x;
-  Edge** liste = &x;
-  *liste = NULL;
-  char* g_name;
-  Knode* y;
-  Knode** klist = &y;
-  *klist = NULL;
-  int anze = 0;
-  int anzv = 0;
   if (nf == 1){
+    Edge* x;
+    Edge** liste = &x;
+    *liste = NULL;
+    char* g_name;
+    Knode* y;
+    Knode** klist = &y;
+    *klist = NULL;
+    int anze = 0;
+    int anzv = 0;
     g_name = readgraph(filename, liste);
-  }
-
-  printedges(liste);
-  edgestograph(klist, liste, &anze);
-  if (klist != NULL && *klist != NULL){
-    Knode* w = *klist;
-    while (w != NULL){
-      anzv++;
-      w = w->next;
+    printedges(liste);
+    edgestograph(klist, liste, &anze);
+    if (klist != NULL && *klist != NULL){
+      Knode* w = *klist;
+      while (w != NULL){
+        anzv++;
+        w = w->next;
+      }
     }
+    printf("Anzahl Knoten: %d\t Anzahl Wege: %d\n", anzv, anze);
+    verbindungen(klist, liste, anzv);
+    anzahlderausgänge(klist, anzv);
+    anzahldereingänge(klist, anzv);
+    printknodes(klist, anzv);
+    if (ir){
+      simrand(N, P, filename);
+    }
+    if (im){
+      simmark(N, P, filename);
+    }
+    if (is){
+      stat(klist, anzv, anze, g_name);
+    }
+    free(g_name);
+    freeknodes(klist);
+    freeedges(liste);
   }
-  printf("Anzahl Knoten: %d\n", anzv);
-  verbindungen(klist, liste, anzv);
-  printknodes(klist, anzv);
-
-  if (ir){
-    simrand(N, P, filename);
-  }
-  if (im){
-    simmark(N, P, filename);
-  }
-  if (is){
-    stat(filename);
-  }
-  freeedges(liste);
-  free(g_name);
   exit(0);
 }
 
@@ -158,8 +165,29 @@ void simmark(unsigned int N, unsigned int p, char *filename){
   return;
 }
 
-void stat(char *filename){
-  printf("s\n");
+void stat(Knode** klist, int anzv, int anze, char* g_name){
+  printf("Identifier:\t%s\n", g_name);
+  printf("Number of vertives:\t%d\n", anzv);
+  printf("Number of edges:\t%d\n", anze);
+  if(klist == NULL || *klist == NULL){
+    printf("No in-/out- degree\n");
+    return;
+  }
+  int mi = 2147483647, Mi = 0, mo = 2147483647, Mo = 0;
+  Knode* v = *klist;
+  while(v != NULL){
+    mo = min(mo, v->anzout);
+    Mo = max(Mo, v->anzout);
+    v = v->next;
+  }
+  v = *klist;
+  while(v != NULL){
+    mi = min(mi, v->anzin);
+    Mi = max(Mi, v->anzin);
+    v = v->next;
+  }
+  printf("Minimal in-degree:\t%d\tMaximal in-degree:\t%d\n", mi, Mi);
+  printf("Minimal out-degree:\t%d\tMaximal out-degree:\t%d\n", mo, Mo);
   return;
 }
 
@@ -538,3 +566,82 @@ void verbindungen(Knode** klist, Edge** liste, int anzv){
   return;
 }
 
+void freeknodes(Knode** klist){
+  if (klist == NULL){
+    return;
+  }
+  Knode *v = *klist, *k;
+  while(v != NULL){
+    free(v->name);
+    free(v->wege);
+    k = v->next;
+    v->next = NULL;
+    free(v);
+    v = k;
+  }
+  klist = NULL;
+  return;
+}
+
+Knode* knotenzunamen(Knode** klist, char* nam){
+  if (klist == NULL || *klist == NULL){
+    return(NULL);
+  }
+  Knode* v = *klist;
+  while(v != NULL){
+    if(!strcmp(nam, v->name)){
+      return(v); 
+    }
+    v = v->next;
+  }
+  printf("Not there!\n");
+  return(NULL);
+}
+
+void anzahlderausgänge(Knode** klist, int anzv){
+  if(klist == NULL || *klist == NULL){
+    return;
+  }
+  Knode* v = *klist;
+  int a;
+  while(v != NULL){
+    a = 0;
+    for (int i = 0; i < anzv; i++){
+      a = a + ((v->wege + i)->outg);
+    }
+    v->anzout = a;
+    v = v->next;
+  }
+  return;
+}
+
+void anzahldereingänge(Knode** klist, int anzv){
+  if(klist == NULL || *klist == NULL){
+    return;
+  }
+  Knode* v = *klist;
+  int a;
+  while(v != NULL){
+    a = 0;
+    for (int i = 0; i < anzv; i++){
+      a = a + ((v->wege + i)->inc);
+    }
+    v->anzin = a;
+    v = v->next;
+  }
+  return;
+}
+
+int min(int a, int b){
+  if(a<b){
+    return(a);
+  }
+  return(b);
+}
+
+int max(int a, int b){
+  if(a>b){
+    return(a);
+  }
+  return(b);
+}
