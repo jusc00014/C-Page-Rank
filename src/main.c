@@ -11,20 +11,28 @@
 
 #include "utils.h"
 
+typedef struct ver Way;
 typedef struct edges Edge;
+typedef struct knod Knode;
+
 struct edges{
   char* src;
   char* dst;
   Edge* next;
 };
 
-typedef struct knod Knode;
 struct knod{
   char* name;
   Knode* next;
-  int* incomming;
-  int* outgoing;
+  Way* wege;
   int anzout;
+};
+
+typedef struct ver Way;
+struct ver{
+  Knode* kn;
+  int inc;
+  int outg;
 };
 
 
@@ -37,8 +45,9 @@ void freeedges (Edge** liste);
 void printedges(Edge** liste);
 Knode* erstelleknoten(char* nam);
 void edgestograph(Knode** klist, Edge** liste, int* e);
-void printknodes(Knode** klist);
+void printknodes(Knode** klist, int anzv);
 Knode* fuegeknotenhinzu(Knode** kliste, char* nam);
+void verbindungen(Knode** klist, Edge** liste, int anzv);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -106,15 +115,24 @@ int main(int argc, char *const *argv) {
   Knode* y;
   Knode** klist = &y;
   *klist = NULL;
-  int anze;
-
+  int anze = 0;
+  int anzv = 0;
   if (nf == 1){
     g_name = readgraph(filename, liste);
   }
 
   printedges(liste);
   edgestograph(klist, liste, &anze);
-  printknodes(klist);
+  if (klist != NULL && *klist != NULL){
+    Knode* w = *klist;
+    while (w != NULL){
+      anzv++;
+      w = w->next;
+    }
+  }
+  printf("Anzahl Knoten: %d\n", anzv);
+  verbindungen(klist, liste, anzv);
+  printknodes(klist, anzv);
 
   if (ir){
     simrand(N, P, filename);
@@ -355,10 +373,10 @@ Knode* erstelleknoten(char* nam){
   strcpy(k->name, nam);
   k->next = NULL;
   k->anzout = 0;
-  k->incomming = NULL;
-  k->outgoing = NULL;
+  k->wege = NULL;
   return(k);
 }
+
 /*
 void freeknodes(Knode **klist) {
     if (klist == NULL || *klist == NULL) {
@@ -401,42 +419,7 @@ void freeknodes(Knode **klist) {
     // Setze den Listenkopf auf NULL, da die Liste jetzt leer ist
     *klist = NULL;
 }*/
-/*
-Knode* fugeknotenhinzu(Knode** kliste, char* nam){
-  Knode* z;
-  if (kliste == NULL){
-    return(NULL);
-  }
-  if (*kliste == NULL){
-    z = erstelleknoten(nam);
-    *kliste = z;
-    return(z);
-  }
-  z = *kliste;
-  //printf("415 ok\n");
-  int u = 0;
-  printf("z: %s\n", z->name);
-  while(z->next != NULL && *(z->next) != NULL){
-    //printf("417 ok\n");
-    u++;
-    if (u>10){
-      break;
-    }
-    if (!strcmp(z->name, nam)){
-      //printf("419 ok\n");
-      return(z);
-    }
-    //printf("422 ok\n");
-    printf("%s\n", z->name);
-    z = *(z->next);
-    printf("%s\n", z->name);
-    //printf("424 ok\n");
-  }
-  Knode* x = erstelleknoten(nam);
-  *(z->next) = x;
-  return(x);
-}
-*/
+
 void edgestograph(Knode** klist, Edge** liste, int* e){
   if (liste == NULL || *liste == NULL){
     return;
@@ -457,7 +440,7 @@ void edgestograph(Knode** klist, Edge** liste, int* e){
   return;
 }
 
-void printknodes(Knode** klist){
+void printknodes(Knode** klist, int anzv){
   if (klist == NULL || *klist == NULL){
     return;
   }
@@ -468,53 +451,21 @@ void printknodes(Knode** klist){
       printf("Fehler in den Knoten");
       return;
     }
-    printf("%d:\t%s\n", n, w->name);
+    printf("Knoten: %s\t", w->name);
+    for(int i = 0; i < anzv; i++){
+      printf("Einkommend: %d\tAusgehend: %d\n", (w->wege + i)->inc, (w->wege + i)->outg);
+    }
     w = w->next;
     n++;
   }
   return;
 }
-/*
-Knode* fuegeknotenhinzu(Knode** kliste, char* nam){
-  if (kliste == NULL){
-    return(NULL);
-  }
-  Knode *k, *v;
-  if(*kliste == NULL){
-    printf("Erstes Element: %s\n", nam);
-    k = erstelleknoten(nam);
-    *kliste = k;
-    return(k);
-  }
-  k = *kliste;
-  while(k->next != NULL){
-    if (k->name == NULL){
-      printf("Knotenfehler");
-      return(NULL);
-    }
-    printf("\n505 ok\n\n");
-    if(!strcmp(k->name, nam)){
-      printf("Nichts neues %s\n", nam);
-      return(k);
-    }
-    k = k->next;
-  }
-  if (k->name == NULL){
-    printf("Knotenfehler");
-    return(NULL);
-  }
-  if(!strcmp(k->name, nam)){
-    printf("Nichts neues %s\n", nam);
-    return(k);
-  }
-  v = erstelleknoten(nam);
-  printf("Neuer Knoten: %s\n", nam);
-  k->next = v;
-  return(v);
-}*/
 
 Knode* fuegeknotenhinzu(Knode** kliste, char* nam){
   Knode* z;
+  if (kliste == NULL){
+    return(NULL);
+  }
   if (*kliste == NULL){
     z = erstelleknoten(nam);
     *kliste = z;
@@ -534,3 +485,56 @@ Knode* fuegeknotenhinzu(Knode** kliste, char* nam){
   z->next = x;
   return(x);
 }
+
+void verbindungen(Knode** klist, Edge** liste, int anzv){
+  if(klist == NULL || *klist == NULL || liste == NULL || *liste == NULL){
+    return;
+  }
+  Knode *k = *klist, *h;
+  Edge* e;
+  //Erstelle eine Liste mit Ways für jeden Knoten
+  while(k != NULL){
+    k->wege = calloc(anzv, sizeof(Way));
+    if (k->wege == NULL){
+      return;
+    }
+    h = *klist;
+    for (int i = 0; i < anzv; i++){
+      (k->wege + i)->kn = h;
+      h = h->next;
+    }
+    k = k->next;
+  }
+  k = *klist;
+  while(k != NULL){
+    //Füge alle ausgehenden Ways in die Liste
+    e = *liste;
+    while(e != NULL){
+      if (!strcmp(e->src, k->name)){
+        for (int i = 0; i < anzv; i++){
+          if(!strcmp(e->dst, ((k->wege + i)->kn)->name)){
+            ((k->wege + i)-> outg) = ((k->wege + i)-> outg) + 1;
+            break;
+          }
+        }
+      }
+      e = e->next;
+    }
+    //Füge alle eingehenden Ways in die Liste
+    e = *liste;
+    while(e != NULL){
+      if (!strcmp(e->dst, k->name)){
+        for (int i = 0; i < anzv; i++){
+          if(!strcmp(e->src, ((k->wege + i)->kn)->name)){
+            ((k->wege + i)-> inc) = ((k->wege + i)-> inc) + 1;
+            break;
+          }
+        }
+      }
+      e = e->next;
+    }
+  k = k->next;
+  }
+  return;
+}
+
