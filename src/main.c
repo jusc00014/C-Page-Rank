@@ -60,7 +60,7 @@ int min(int a, int b);
 int max(int a, int b);
 Knode* nextknode(Knode* v, Knode** klist, int anzv);
 Knode* bored(Knode** klist, int anzv);
-Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist);
+Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist, int N);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -172,7 +172,6 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
   unsigned int k;
   unsigned int b;
   v = bored(klist, anzv);
-  printf("%s - ", v->name);
   //v ist nun der Startknoten
   for (unsigned int i = 1; i < N; i++){
     if (v->anzout == 0){
@@ -186,12 +185,9 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
         v = nextknode(v, klist, anzv);
       }
     }
-    if (v != NULL){
-    printf("%s - ", v->name);
-    }
     randlist[i-1] = v;
   }
-  Prob** pr = wahrscheinlichkeitszuweisung(randlist, anzv, klist);
+  Prob** pr = wahrscheinlichkeitszuweisung(randlist, anzv, klist, N-1);
   for(int i; i<anzv; i++){
     free(pr[i]);
   }
@@ -671,7 +667,7 @@ Knode* nextknode(Knode* v, Knode** klist, int anzv){
   return(NULL);
 }
 
-Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist){
+Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist, int N){
   if (klist == NULL || *klist == NULL){
     return (NULL);
   }
@@ -683,19 +679,21 @@ Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist){
     pp->kn = v;
     *(pr + i) = pp;
     v = v->next;
-    printf("%s\n", (pr[i]->kn)->name);
+   // printf("%s\n", (pr[i]->kn)->name);
   }
   for (int i = 0; i<anzv; i++){
     v = (*(pr + i))->kn;
-    printf("\n\n%s: ", v->name);
+   // printf("\n\n%s: ", v->name);
     (*(pr + i))->p = 0.0;
-    for (int j = 0; j<anzv; j++){
+    for (int j = 0; j<N; j++){
       if (*(randlist + j) == v){
-        printf("%s - ", (*(randlist + j))->name);
+       // printf("%s - ", (*(randlist + j))->name);
         (*(pr + i))->p = (*(pr + i))->p + 1.0;
       }
     }
-    printf("\n%.10f\n\n", (*(pr + i))->p);
+    (*(pr + i))->p = ((*(pr + i))->p)/N;
+    printf("%s\t%.10f\n", ((*(pr + i))->kn)->name, (*(pr + i))->p);
+   // printf("\n%.10f\n\n", (*(pr + i))->p);
   }
   return(pr);
 }
