@@ -43,7 +43,7 @@ struct probab{
 
 
 void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv);
-void simmark(unsigned int N, unsigned int p, char *filename);
+void simmark(Knode** klist, int anzv, unsigned int N, unsigned int p);
 void stat(Knode** klist, int anzv, int anze, char* g_name);
 char* readgraph(char* filename, Edge** liste);
 void freeedges (Edge** liste);
@@ -61,6 +61,9 @@ int max(int a, int b);
 Knode* nextknode(Knode* v, Knode** klist, int anzv);
 Knode* bored(Knode** klist, int anzv);
 Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist, int N);
+double srczudst(Knode* src, Knode* dst, int anzv, double alle, unsigned int p);
+void printmatrix(double* m, int anzv);
+void matrixmult(double* m, double* v, int anzv);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -75,7 +78,7 @@ int main(int argc, char *const *argv) {
   while ((opt = getopt(argc, argv, "hr:m:sp:"))!= -1){
     switch (opt) {
       case 'h':
-        printf("Available command line parameters:\n -h\t (Print an overview of the availible command line parameters)\n -r N\t (Simulate N steps of the random surfer and output the result)\n -m N\t (Simulate N steps of the Markov chain and output the result)\n -s\t (Compute and print the statistic of the graph)\n -p  P\t (Set the parameter p to P percent, default: P = 10)\n");
+        printf("Available command line parameters:\n -h\t (Print an overview of the availible command line parameters)\n -r N\t (Simulate N steps of the random surfer and output the result)\n -m N\t (Simulate N steps of the Markov chain and output the result)\n -s\t (Compute and print the statistic of the graph)\n -p P\t (Set the parameter p to P percent, default: P = 10)\n");
         break;
       case 'r':
         if(optarg != NULL) {
@@ -150,7 +153,7 @@ int main(int argc, char *const *argv) {
       simrand(N, P, klist, anzv);
     }
     if (im){
-      simmark(N, P, filename);
+      simmark(klist, anzv, M, P);
     }
     if (is){
       stat(klist, anzv, anze, g_name);
@@ -177,9 +180,9 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
     if (v->anzout == 0){
       v = bored(klist, anzv);
     } else {
-      k = 100/p;
+      k = 100;
       b = randu(k);
-      if (b == 0){
+      if (b < p){
         v = bored(klist, anzv);
       } else {
         v = nextknode(v, klist, anzv);
@@ -188,7 +191,7 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
     randlist[i-1] = v;
   }
   Prob** pr = wahrscheinlichkeitszuweisung(randlist, anzv, klist, N-1);
-  for(int i; i<anzv; i++){
+  for(int i = 0; i<anzv; i++){
     free(pr[i]);
   }
   free(pr);
@@ -198,8 +201,43 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
   return;
 }
 
-void simmark(unsigned int N, unsigned int p, char *filename){
-  printf("m\n");
+void simmark(Knode** klist, int anzv, unsigned int N, unsigned int p){
+  double alle = 1.0/(double) anzv;
+  alle = alle * (double)p/100.0;
+  if(klist == NULL || *klist == NULL){
+    return;
+  }
+  //Erstelle Matrix mit den Wahrscheinlichkeiten
+  Knode *src, *dst;
+  src = *klist;
+  double* m = calloc(anzv*anzv, sizeof(double));
+  for(int i = 0; i<anzv; i++){ //Zeile i
+    dst = *klist;
+    for(int j = 0; j<anzv; j++){ //Spalte j
+      m[anzv*i + j] = srczudst(src, dst, anzv, alle, p);
+      dst = dst->next;
+    }
+    src = src->next;
+  }
+  //Berechne Wahrscheinlichkeit nach N Zügen
+  double* v = calloc(anzv, sizeof(double));
+  double initial = 1.0/(double)anzv;
+  for(int i = 0; i < anzv; i++){
+    v[i] = initial;
+  }
+  //printmatrix(m,anzv);
+  for(int i = 0; i < N; i++){
+    matrixmult(m, v, anzv);
+  }
+  src = *klist;
+  for(int i = 0; i<anzv; i++){
+    printf("%s\t%.10f\n", src->name, v[i]);
+    src = src->next;
+  }
+  free(m);
+  free(v);
+  v = NULL;
+  m = NULL;
   return;
 }
 
@@ -448,7 +486,6 @@ void edgestograph(Knode** klist, Edge** liste, int* e){
     return;
   }
   Edge* w = *liste;
-  Knode *k, *h;
   *e = 0;
   while(w != NULL){
     *e = *e +1;
@@ -456,8 +493,8 @@ void edgestograph(Knode** klist, Edge** liste, int* e){
       printf("Fehler in den edges");
       return;
     }
-    k = fuegeknotenhinzu(klist, w->src);
-    h = fuegeknotenhinzu(klist, w->dst);
+    fuegeknotenhinzu(klist, w->src);
+    fuegeknotenhinzu(klist, w->dst);
     w = w->next;
   }
   return;
@@ -679,21 +716,63 @@ Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist, i
     pp->kn = v;
     *(pr + i) = pp;
     v = v->next;
-   // printf("%s\n", (pr[i]->kn)->name);
   }
   for (int i = 0; i<anzv; i++){
     v = (*(pr + i))->kn;
-   // printf("\n\n%s: ", v->name);
     (*(pr + i))->p = 0.0;
     for (int j = 0; j<N; j++){
       if (*(randlist + j) == v){
-       // printf("%s - ", (*(randlist + j))->name);
         (*(pr + i))->p = (*(pr + i))->p + 1.0;
       }
     }
     (*(pr + i))->p = ((*(pr + i))->p)/N;
     printf("%s\t%.10f\n", ((*(pr + i))->kn)->name, (*(pr + i))->p);
-   // printf("\n%.10f\n\n", (*(pr + i))->p);
   }
   return(pr);
+}
+
+double srczudst(Knode* src, Knode* dst, int anzv, double alle, unsigned int p){
+  if (src->anzout == 0){
+  //  printf("%s to %s = %.10f\n", src->name, dst->name, (1.0 / (double)anzv));
+    return(1.0 / (double)anzv);
+  }
+  double k = 0.0;
+  for (int i = 0; i<anzv; i++){
+    if(((dst->wege)+i)->kn == src){
+      k = (double)((dst->wege)+i)->inc;
+      break;
+    }
+  }
+  k = k / (double) src->anzout;
+  k = k * (1.0 - (double) p/100.0);
+  k = k + alle;
+  //printf("%s to %s = %.10f\n", src->name, dst->name, k);
+  return(k);
+}
+
+void printmatrix(double* m, int anzv){
+  for(int i = 0; i < anzv; i++){
+    for(int j = 0; j < anzv; j++){
+      printf("%f ", m[anzv*i+j]);
+    }
+    printf("\n");
+  }
+  return;
+}
+
+void matrixmult(double* m, double* v, int anzv){
+  double k;
+  double *w = calloc(anzv, sizeof(double));
+  for(int i = 0; i<anzv; i++){
+    k = 0;
+    for(int j = 0; j<anzv; j++){
+      k = k + v[j]*m[anzv*j+i];
+    }
+    w[i] = k;
+  }
+  for (int i = 0; i<anzv; i++){
+    v[i] = w[i];
+  }
+  free(w);
+  return;
 }
