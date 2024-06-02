@@ -14,6 +14,7 @@
 typedef struct ver Way;
 typedef struct edges Edge;
 typedef struct knod Knode;
+typedef struct probab Prob;
 
 struct edges{
   char* src;
@@ -29,16 +30,19 @@ struct knod{
   int anzin;
 };
 
-typedef struct ver Way;
 struct ver{
   Knode* kn;
   int inc;
   int outg;
 };
 
+struct probab{
+  Knode* kn;
+  double p;
+};
 
 
-void simrand(unsigned int N, unsigned int p, char *filename);
+void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv);
 void simmark(unsigned int N, unsigned int p, char *filename);
 void stat(Knode** klist, int anzv, int anze, char* g_name);
 char* readgraph(char* filename, Edge** liste);
@@ -54,6 +58,9 @@ void anzahlderausgänge(Knode** klist, int anzv);
 void anzahldereingänge(Knode** klist, int anzv);
 int min(int a, int b);
 int max(int a, int b);
+Knode* nextknode(Knode* v, Knode** klist, int anzv);
+Knode* bored(Knode** klist, int anzv);
+Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist);
 
 int main(int argc, char *const *argv) {
   // initialize the random number generator
@@ -125,7 +132,7 @@ int main(int argc, char *const *argv) {
     int anze = 0;
     int anzv = 0;
     g_name = readgraph(filename, liste);
-    printedges(liste);
+//    printedges(liste);
     edgestograph(klist, liste, &anze);
     if (klist != NULL && *klist != NULL){
       Knode* w = *klist;
@@ -134,13 +141,13 @@ int main(int argc, char *const *argv) {
         w = w->next;
       }
     }
-    printf("Anzahl Knoten: %d\t Anzahl Wege: %d\n", anzv, anze);
+//    printf("Anzahl Knoten: %d\t Anzahl Wege: %d\n", anzv, anze);
     verbindungen(klist, liste, anzv);
     anzahlderausgänge(klist, anzv);
     anzahldereingänge(klist, anzv);
-    printknodes(klist, anzv);
+//    printknodes(klist, anzv);
     if (ir){
-      simrand(N, P, filename);
+      simrand(N, P, klist, anzv);
     }
     if (im){
       simmark(N, P, filename);
@@ -155,8 +162,43 @@ int main(int argc, char *const *argv) {
   exit(0);
 }
 
-void simrand(unsigned int N, unsigned int p, char *filename){
-  printf("r\n");
+
+void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
+  if (klist == NULL || *klist == NULL){
+    return;
+  }
+  Knode* v;
+  Knode** randlist = calloc(N-1, sizeof(Knode*));
+  unsigned int k;
+  unsigned int b;
+  v = bored(klist, anzv);
+  printf("%s - ", v->name);
+  //v ist nun der Startknoten
+  for (unsigned int i = 1; i < N; i++){
+    if (v->anzout == 0){
+      v = bored(klist, anzv);
+    } else {
+      k = 100/p;
+      b = randu(k);
+      if (b == 0){
+        v = bored(klist, anzv);
+      } else {
+        v = nextknode(v, klist, anzv);
+      }
+    }
+    if (v != NULL){
+    printf("%s - ", v->name);
+    }
+    randlist[i-1] = v;
+  }
+  Prob** pr = wahrscheinlichkeitszuweisung(randlist, anzv, klist);
+  for(int i; i<anzv; i++){
+    free(pr[i]);
+  }
+  free(pr);
+  pr = NULL;
+  free(randlist);
+  randlist = NULL;
   return;
 }
 
@@ -166,15 +208,15 @@ void simmark(unsigned int N, unsigned int p, char *filename){
 }
 
 void stat(Knode** klist, int anzv, int anze, char* g_name){
-  printf("Identifier:\t%s\n", g_name);
-  printf("Number of vertives:\t%d\n", anzv);
-  printf("Number of edges:\t%d\n", anze);
-  if(klist == NULL || *klist == NULL){
-    printf("No in-/out- degree\n");
-    return;
-  }
+  printf("%s:\n", g_name);
+  printf("- num nodes: %d\n", anzv);
+  printf("- num edges: %d\n", anze);
   int mi = 2147483647, Mi = 0, mo = 2147483647, Mo = 0;
   Knode* v = *klist;
+  if (v == NULL){
+    mi = 0;
+    mo = 0;
+  }
   while(v != NULL){
     mo = min(mo, v->anzout);
     Mo = max(Mo, v->anzout);
@@ -186,8 +228,8 @@ void stat(Knode** klist, int anzv, int anze, char* g_name){
     Mi = max(Mi, v->anzin);
     v = v->next;
   }
-  printf("Minimal in-degree:\t%d\tMaximal in-degree:\t%d\n", mi, Mi);
-  printf("Minimal out-degree:\t%d\tMaximal out-degree:\t%d\n", mo, Mo);
+  printf("- indegree: %d-%d\n", mi, Mi);
+  printf("- outdegree: %d-%d\n", mo, Mo);
   return;
 }
 
@@ -405,49 +447,6 @@ Knode* erstelleknoten(char* nam){
   return(k);
 }
 
-/*
-void freeknodes(Knode **klist) {
-    if (klist == NULL || *klist == NULL) {
-        return;
-    }
-
-    Knode *w = *klist;
-    In *i1, *i2;
-    Out *o1, *o2;
-
-    while (w != NULL) {
-        // Gebe Liste der Incoming Edges frei
-        i1 = w->incomming;
-        while (i1 != NULL) {
-            i1->kn = NULL;
-            i2 = i1->next;
-            i1->next = NULL;
-            free(i1);
-            i1 = i2;
-        }
-
-        // Gebe Liste der Outgoing Edges frei
-        o1 = w->outgoing;
-        while (o1 != NULL) {
-            o1->kn = NULL;
-            o2 = o1->next;
-            o1->next = NULL;
-            free(o1);
-            o1 = o2;
-        }
-
-        // Gebe Knoten frei
-        Knode *nächster = w->next;
-        free(w->name); // Angenommen, es gibt ein Feld 'name' im Knode, das auch freigegeben werden muss
-        w->next = NULL;
-        free(w);
-        w = nächster;
-    }
-
-    // Setze den Listenkopf auf NULL, da die Liste jetzt leer ist
-    *klist = NULL;
-}*/
-
 void edgestograph(Knode** klist, Edge** liste, int* e){
   if (liste == NULL || *liste == NULL){
     return;
@@ -644,4 +643,59 @@ int max(int a, int b){
     return(a);
   }
   return(b);
+}
+
+Knode* bored(Knode** klist, int anzv){
+  unsigned int k = anzv;
+  unsigned int b = randu(k);
+  Knode* v = *klist;
+  while(b > 0){
+    v = v->next;
+    b--;
+  }
+  return(v);
+}
+
+Knode* nextknode(Knode* v, Knode** klist, int anzv){
+  unsigned int k = v->anzout;
+  unsigned int b = randu(k);
+  b++;
+  Way* w = v->wege;
+  for(int i = 0; i < anzv; i++){
+    if ((w + i)->outg < b){
+      b = b - ((w + i)->outg);
+    } else {
+      return((w + i)->kn);
+    }
+  }
+  return(NULL);
+}
+
+Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist){
+  if (klist == NULL || *klist == NULL){
+    return (NULL);
+  }
+  Prob** pr = calloc(anzv, sizeof(Prob*));
+  Knode* v = *klist;
+  Prob *pp = NULL;
+  for (int i = 0; i<anzv; i++){
+    pp = calloc(1, sizeof(Prob));
+    pp->kn = v;
+    *(pr + i) = pp;
+    v = v->next;
+    printf("%s\n", (pr[i]->kn)->name);
+  }
+  for (int i = 0; i<anzv; i++){
+    v = (*(pr + i))->kn;
+    printf("\n\n%s: ", v->name);
+    (*(pr + i))->p = 0.0;
+    for (int j = 0; j<anzv; j++){
+      if (*(randlist + j) == v){
+        printf("%s - ", (*(randlist + j))->name);
+        (*(pr + i))->p = (*(pr + i))->p + 1.0;
+      }
+    }
+    printf("\n%.10f\n\n", (*(pr + i))->p);
+  }
+  return(pr);
 }
