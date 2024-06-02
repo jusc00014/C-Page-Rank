@@ -51,7 +51,7 @@ void printedges(Edge** liste);
 Knode* erstelleknoten(char* nam);
 void edgestograph(Knode** klist, Edge** liste, int* e);
 void printknodes(Knode** klist, int anzv);
-Knode* fuegeknotenhinzu(Knode** kliste, char* nam);
+void fuegeknotenhinzu(Knode** kliste, char* nam);
 void verbindungen(Knode** klist, Edge** liste, int anzv);
 void freeknodes(Knode** klist);
 void anzahlderausgänge(Knode** klist, int anzv);
@@ -109,9 +109,11 @@ int main(int argc, char *const *argv) {
           P = atoi(optarg);
         } else {
           fprintf(stderr, "Option -p requires an argument.\n");
-          exit(EXIT_FAILURE);
+          exit(1);
         }
         break;
+      default:
+        exit(1);
     }
   }
 
@@ -121,7 +123,7 @@ int main(int argc, char *const *argv) {
 
   if (nf == 1 && filename == NULL){
     printf("Give file\n");
-    return(1);
+    exit(1);
   }
 
   if (nf == 1){
@@ -135,6 +137,9 @@ int main(int argc, char *const *argv) {
     int anze = 0;
     int anzv = 0;
     g_name = readgraph(filename, liste);
+    if (g_name == NULL){
+      exit(1);
+    }
 //    printedges(liste);
     edgestograph(klist, liste, &anze);
     if (klist != NULL && *klist != NULL){
@@ -144,7 +149,6 @@ int main(int argc, char *const *argv) {
         w = w->next;
       }
     }
-//    printf("Anzahl Knoten: %d\t Anzahl Wege: %d\n", anzv, anze);
     verbindungen(klist, liste, anzv);
     anzahlderausgänge(klist, anzv);
     anzahldereingänge(klist, anzv);
@@ -162,7 +166,7 @@ int main(int argc, char *const *argv) {
     freeknodes(klist);
     freeedges(liste);
   }
-  exit(0);
+  return(0);
 }
 
 
@@ -172,6 +176,11 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
   }
   Knode* v;
   Knode** randlist = calloc(N-1, sizeof(Knode*));
+  if (randlist == NULL)
+  {
+    printf("Speicherfehler k\n");
+    return;
+  }
   unsigned int k;
   unsigned int b;
   v = bored(klist, anzv);
@@ -191,6 +200,9 @@ void simrand(unsigned int N, unsigned int p, Knode** klist, int anzv){
     randlist[i-1] = v;
   }
   Prob** pr = wahrscheinlichkeitszuweisung(randlist, anzv, klist, N-1);
+  if(pr == NULL){
+    return;
+  }
   for(int i = 0; i<anzv; i++){
     free(pr[i]);
   }
@@ -211,6 +223,11 @@ void simmark(Knode** klist, int anzv, unsigned int N, unsigned int p){
   Knode *src, *dst;
   src = *klist;
   double* m = calloc(anzv*anzv, sizeof(double));
+  if (m == NULL)
+  {
+    printf("Speicherfehler k\n");
+    return;
+  }
   for(int i = 0; i<anzv; i++){ //Zeile i
     dst = *klist;
     for(int j = 0; j<anzv; j++){ //Spalte j
@@ -221,6 +238,11 @@ void simmark(Knode** klist, int anzv, unsigned int N, unsigned int p){
   }
   //Berechne Wahrscheinlichkeit nach N Zügen
   double* v = calloc(anzv, sizeof(double));
+  if (v == NULL)
+  {
+    printf("Speicherfehler k\n");
+    return;
+  }
   double initial = 1.0/(double)anzv;
   for(int i = 0; i < anzv; i++){
     v[i] = initial;
@@ -521,29 +543,32 @@ void printknodes(Knode** klist, int anzv){
   return;
 }
 
-Knode* fuegeknotenhinzu(Knode** kliste, char* nam){
+void fuegeknotenhinzu(Knode** kliste, char* nam){
   Knode* z;
   if (kliste == NULL){
-    return(NULL);
+    return;
   }
   if (*kliste == NULL){
     z = erstelleknoten(nam);
     *kliste = z;
-    return(z);
+    return;
   }
   z = *kliste;
   while(z->next != NULL){
     if (!strcmp(z->name, nam)){
-      return(z);
+      return;
     }
     z = z->next;
   }
   if (!strcmp(z->name, nam)){
-    return(z);
+    return;
   }
   Knode* x = erstelleknoten(nam);
+  if(x == NULL){
+    return;
+  }
   z->next = x;
-  return(x);
+  return;
 }
 
 void verbindungen(Knode** klist, Edge** liste, int anzv){
@@ -613,21 +638,6 @@ void freeknodes(Knode** klist){
   }
   klist = NULL;
   return;
-}
-
-Knode* knotenzunamen(Knode** klist, char* nam){
-  if (klist == NULL || *klist == NULL){
-    return(NULL);
-  }
-  Knode* v = *klist;
-  while(v != NULL){
-    if(!strcmp(nam, v->name)){
-      return(v); 
-    }
-    v = v->next;
-  }
-  printf("Not there!\n");
-  return(NULL);
 }
 
 void anzahlderausgänge(Knode** klist, int anzv){
@@ -709,10 +719,21 @@ Prob** wahrscheinlichkeitszuweisung(Knode** randlist, int anzv, Knode** klist, i
     return (NULL);
   }
   Prob** pr = calloc(anzv, sizeof(Prob*));
+  if (pr == NULL)
+  {
+    printf("Speicherfehler k\n");
+    return(NULL);
+  }
   Knode* v = *klist;
   Prob *pp = NULL;
+
   for (int i = 0; i<anzv; i++){
     pp = calloc(1, sizeof(Prob));
+    if (pp == NULL)
+    {
+      printf("Speicherfehler k\n");
+      return(NULL);
+    }
     pp->kn = v;
     *(pr + i) = pp;
     v = v->next;
@@ -763,6 +784,11 @@ void printmatrix(double* m, int anzv){
 void matrixmult(double* m, double* v, int anzv){
   double k;
   double *w = calloc(anzv, sizeof(double));
+  if (w == NULL)
+  {
+    printf("Speicherfehler k\n");
+    return;
+  }
   for(int i = 0; i<anzv; i++){
     k = 0;
     for(int j = 0; j<anzv; j++){
